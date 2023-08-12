@@ -9,10 +9,10 @@ const fsPromises = require('fs').promises;
 const cors = require('cors');
 const sharp = require('sharp');
 const mongoose = require('mongoose')
-const Jimp = require('jimp');
-const gm = require('gm');
-const morgan = require('morgan');
-const compression = require('compression');
+// const Jimp = require('jimp');:
+// const gm = require('gm');
+// const morgan = require('morgan');
+// const compression = require('compression');
 const models = require('../models/models');
 require('dotenv').config({ path: '../../.env'});
 
@@ -20,8 +20,8 @@ const saltRounds = 10;
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'src/assets/books')));
-app.use(compression());
-app.use(morgan('combined'));
+// app.use(compression());
+// app.use(morgan('combined'));
 app.use(cors());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -74,7 +74,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // const fsPromises = fs.promises;
 const resizeImageAsync = async (originalPath) => {
-  console.log('Original Path:', originalPath);
+  // console.log('Original Path:', originalPath);
 
  
   try {
@@ -111,22 +111,22 @@ const resizeImageAsync = async (originalPath) => {
   }
 }
 
-const resizeImageMiddleware = async (req, res, next) => {
-  try {
-      if (!req.file) {
-          throw new Error("Aucun fichier téléchargé");
-      }
+// const resizeImageMiddleware = async (req, res, next) => {
+//   try {
+//       if (!req.file) {
+//           throw new Error("Aucun fichier téléchargé");
+//       }
 
-      console.time("Image Resizing Time");
-      await resizeImageAsync(req.file.path);
-      console.timeEnd("Image Resizing Time");
+//       console.time("Image Resizing Time");
+//       await resizeImageAsync(req.file.path);
+//       console.timeEnd("Image Resizing Time");
 
-      next(); 
-  } catch (error) {
-      console.error("Erreur lors du redimensionnement de l'image:", error);
-      res.status(500).send("Erreur lors du redimensionnement de l'image");
-  }
-};
+//       next(); 
+//   } catch (error) {
+//       console.error("Erreur lors du redimensionnement de l'image:", error);
+//       res.status(500).send("Erreur lors du redimensionnement de l'image");
+//   }
+// };
 
 
 
@@ -201,14 +201,17 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-// app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
-app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
+// app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
   console.time("Book Request Processing Time");
+
+  console.time("Resize Image Time");
+  await resizeImageAsync(req.file.path);
+  console.timeEnd("Resize Image Time"); 
 
   try {
     console.time("JSON Parsing Time");
-    // try {
-      const bookData = JSON.parse(req.body.book);
+    const bookData = JSON.parse(req.body.book);
     console.timeEnd("JSON Parsing Time");
 
     console.log("Redimensionnement réussi");
@@ -277,6 +280,7 @@ app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMid
 
   console.timeEnd("Book Request Processing Time");
 });
+
 
 app.post('/api/auth/signup', async (req, res) => {
   if(!req.body.email || !req.body.password){
