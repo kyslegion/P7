@@ -150,13 +150,13 @@ export function addBook(data) {
     },
   })
   .then(response => {
-    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée
+    console.timeEnd("axios call duration");
     console.log(response, "res");
     console.timeEnd("Total addBook Function Duration");
     return response.data;
   })
   .catch(err => {
-    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée en cas d'erreur
+    console.timeEnd("axios call duration"); 
     console.error(err, "err");
 
     if (err.code === 'ECONNABORTED') {
