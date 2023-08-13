@@ -73,41 +73,46 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 // const fsPromises = fs.promises;
-const resizeImageAsync = async (originalPath) => {
-  // console.log('Original Path:', originalPath);
+const resizeImageMiddleware = async (req, res, next) => {
+  if (!req.file || !req.file.path) {
+      return next(new Error("Image not found in request."));
+  }
 
- 
+  const originalPath = req.file.path;
+
   try {
-    await fsPromises.access(originalPath);
+      await fsPromises.access(originalPath);
   } catch (error) {
-    console.error(`Le fichier à l'emplacement ${originalPath} n'existe pas ou n'est pas accessible.`);
-    throw error;
+      console.error(`Le fichier à l'emplacement ${originalPath} n'existe pas ou n'est pas accessible.`);
+      return next(error);
   }
 
   try {
-    console.time('Reading File');
-    const buffer = await fsPromises.readFile(originalPath);
-    console.timeEnd('Reading File');
+      console.time('Reading File');
+      const buffer = await fsPromises.readFile(originalPath);
+      console.timeEnd('Reading File');
 
-    console.time('Resizing Image');
-    const resizedImageBuffer = await sharp(buffer)
-      .resize(463, 595) 
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    console.timeEnd('Resizing Image');
+      console.time('Resizing Image');
+      const resizedImageBuffer = await sharp(buffer)
+          .resize(463, 595)
+          .jpeg({ quality: 80 })
+          .toBuffer();
+      console.timeEnd('Resizing Image');
 
-    console.time('Writing Resized Image');
-    await fsPromises.writeFile(originalPath, resizedImageBuffer); 
-    console.timeEnd('Writing Resized Image');
+      console.time('Writing Resized Image');
+      await fsPromises.writeFile(originalPath, resizedImageBuffer);
+      console.timeEnd('Writing Resized Image');
+
+      next();  // Continue to the next middleware or route handler.
   } catch (error) {
-    console.error('Erreur lors du redimensionnement de l\'image:', error);
-    if (error.code) {
-      console.error('Error Code:', error.code);
-    }
-    if (error.path) {
-      console.error('Error Path:', error.path);
-    }
-    throw error;  
+      console.error('Erreur lors du redimensionnement de l\'image:', error);
+      if (error.code) {
+          console.error('Error Code:', error.code);
+      }
+      if (error.path) {
+          console.error('Error Path:', error.path);
+      }
+      next(error);  // Pass the error to the next error handling middleware or to Express.
   }
 }
 
@@ -171,12 +176,10 @@ const authenticateToken = async (req, res, next) => {
 };
 
 
-
 app.get('/api/books', async (req, res) => {
   const books = await Book.find({});
   return res.status(200).json(books)
 });
-
 app.get('/api/books/bestrating', async (req, res) => {
   try {
     const topRatedBooks = await Book.find({})
@@ -201,13 +204,8 @@ app.get('/api/books/:id', async (req, res) => {
     return res.status(500).json({ message: error.message });
   }
 });
-// app.post('/api/books', authenticateToken, upload.single('image'), resizeImageMiddleware, async (req, res) => {
-app.post('/api/books', authenticateToken, upload.single('image'), async (req, res) => {
+app.post('/api/books', authenticateToken, upload.single('image'),resizeImageMiddleware, async (req, res) => {
   console.time("Book Request Processing Time");
-
-  console.time("Resize Image Time");
-  await resizeImageAsync(req.file.path);
-  console.timeEnd("Resize Image Time"); 
 
   try {
     console.time("JSON Parsing Time");
@@ -280,8 +278,6 @@ app.post('/api/books', authenticateToken, upload.single('image'), async (req, re
 
   console.timeEnd("Book Request Processing Time");
 });
-
-
 app.post('/api/auth/signup', async (req, res) => {
   if(!req.body.email || !req.body.password){
 		return res.status(400).send({
@@ -400,12 +396,11 @@ app.post('/api/books/:id/rating',authenticateToken, async (req, res) => {
     res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre : ${error.message}`);
   }
 });
-app.put('/api/books/:id', authenticateToken, upload.single('image'), async (req, res) => {
+app.put('/api/books/:id', authenticateToken, upload.single('image'),resizeImageMiddleware, async (req, res) => {
   try {
     let imageUrl;
     if (req.file) {
       imageUrl = '/assets/book/' + req.file.filename;
-      await resizeImageAsync(req.file.path);
     }
 
     const { title, author, year, genre, ratings } = req.body;
