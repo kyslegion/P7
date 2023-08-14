@@ -43,12 +43,7 @@ function BookForm({ book, validate }) {
 
 
   const onSubmit = async (data) => {
-    console.time("Total onSubmit Function Duration"); // Mesurer la durée totale de la fonction
-    
-  //   if (!data.title || !data.author || !data.year || !data.genre) {
-  //     alert('Veuillez remplir tous les champs obligatoires.');
-  //     return;
-  // }
+    console.time("Total onSubmit Function Duration");
   
     try {
       let result;
@@ -59,47 +54,40 @@ function BookForm({ book, validate }) {
           return;
         }
         
-        console.time("addBook Function Duration"); // Mesurer la durée de la fonction addBook
+        console.time("addBook Function Duration");
         result = await addBook(data);
-        // result = await addBook(data);
         if (!result) {
             throw new Error("addBook n'a renvoyé aucune réponse.");
         }
-        console.timeEnd("addBook Function Duration"); // Arrêter le chronomètre pour addBook
+        console.timeEnd("addBook Function Duration");
         console.log("Résultat de addBook:", result);
         
       } else {
-        
-        console.time("updateBook Function Duration"); // Mesurer la durée de la fonction updateBook
+        console.time("updateBook Function Duration");
         result = await updateBook(data, data.id);
-        console.timeEnd("updateBook Function Duration"); // Arrêter le chronomètre pour updateBook
+        console.timeEnd("updateBook Function Duration");
         console.log("Résultat de updateBook:", result);
-        
       }
   
-      if (!result.error) {
-        validate(true);
+      if (result.error) {
+        throw new Error(result.message); // Provoque une erreur pour entrer dans le bloc catch
       } else {
-        console.log("Erreur lors de la soumission2:", result.message);
-        if (result.response) {
-          alert(`Erreur: ${result.response.data.message}`);
-        } else {
-          alert(result.message);
-        }
+        validate(true);
       }
     } catch (error) {
-      console.error("Erreur lors de la soumission1:", error);
+      console.error("Erreur lors de la soumission:", error.message, error.stack, error.response ? error.response.data : "");
   
       if (error.response) {
         console.error("Détails de l'erreur:", error.response.data);
         alert(`Erreur: ${error.response.data.message || 'Une erreur est survenue lors de la soumission.'}`);
       } else {
-        alert("Une erreur est survenue lors de la soumission. Veuillez réessayer.");
+        alert(error.message || "Une erreur est survenue lors de la soumission. Veuillez réessayer.");
       }
     }
   
-    console.timeEnd("Total onSubmit Function Duration"); // Arrêter le chronomètre pour la durée totale de la fonction
-  };
+    console.timeEnd("Total onSubmit Function Duration");
+};
+
   
 
   
@@ -107,7 +95,7 @@ function BookForm({ book, validate }) {
   
   const readOnlyStars = !!book;
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className={styles.Form}>
+    <form onSubmit={handleSubmit(onSubmit)} className={styles.Form} >
       <input type="hidden" id="id" {...register('id')} />
       <label htmlFor="title">
         <p>Titre du livre</p>

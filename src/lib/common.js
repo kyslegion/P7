@@ -138,8 +138,7 @@ export function addBook(data) {
   bodyFormData.append('image', data.file[0]);
   console.timeEnd("LocalStorage & Data Preparation");
 
-  console.time("axios call duration"); // Démarrer le chronomètre
-
+  console.time("axios call duration"); 
   return axios({
     method: 'post',
     url: `${API_ROUTES.BOOKS}`,
@@ -150,13 +149,13 @@ export function addBook(data) {
     },
   })
   .then(response => {
-    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée
+    console.timeEnd("axios call duration"); 
     console.log(response, "res");
     console.timeEnd("Total addBook Function Duration");
     return response.data;
   })
   .catch(err => {
-    console.timeEnd("axios call duration"); // Arrêter le chronomètre et afficher la durée en cas d'erreur
+    console.timeEnd("axios call duration"); 
     console.error(err, "err");
 
     if (err.code === 'ECONNABORTED') {
@@ -286,7 +285,9 @@ export function addBook(data) {
 
 
 export async function updateBook(data, id) {
-  // const userId = localStorage.getItem('userId');
+  if (!data || !id) {
+    return { error: true, message: 'Invalid data or id' };
+  }
 
   let newData;
   const book = {
@@ -296,12 +297,14 @@ export async function updateBook(data, id) {
     year: data.year,
     genre: data.genre,
   };
-  if (data.file[0]) {
+
+  if (data.file && data.file[0]) {
     newData = new FormData();
     newData.append('book', JSON.stringify(book));
     newData.append('image', data.file[0]);
   } else {
-    newData = { ...book };
+    newData = new FormData();
+    newData.append('book', JSON.stringify(book));
   }
 
   try {
@@ -311,11 +314,12 @@ export async function updateBook(data, id) {
       data: newData,
       headers: {
         Authorization: `Bearer ${localStorage.getItem('token')}`,
+        'Content-Type': data.file && data.file[0] ? undefined : 'application/json'
       },
     });
     return newBook;
   } catch (err) {
-    console.error(err);
+    console.error('Server Response:', err.response.data); // This will display the server's response
     return { error: true, message: err.message };
   }
 }

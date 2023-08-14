@@ -1,12 +1,6 @@
+/* eslint-disable */
 const mongoose = require('mongoose');
 
-const imageSchema = new mongoose.Schema({
-  imageUrl: String, 
-  title: String, 
-  author: String,   
-  year: Number,    
-  genre: String    
-});
 const ratingSchema = new mongoose.Schema({
   userId: String,
   grade: Number
@@ -26,7 +20,6 @@ const userSchema = new mongoose.Schema({
 }, {collection: 'users'});
 
 module.exports = {
-  Image: mongoose.model('Image', imageSchema),
   Book: mongoose.model('Book', bookSchema),
   User: mongoose.model('User', userSchema),
 };

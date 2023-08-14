@@ -74,47 +74,62 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 // const fsPromises = fs.promises;
 const resizeImageMiddleware = async (req, res, next) => {
+  // Si il n'y a pas de fichier dans la requête, passez simplement au prochain middleware
   if (!req.file || !req.file.path) {
-      return next(new Error("Image not found in request."));
+    return next();
   }
 
   const originalPath = req.file.path;
 
   try {
-      await fsPromises.access(originalPath);
+    await fsPromises.access(originalPath);
   } catch (error) {
-      console.error(`Le fichier à l'emplacement ${originalPath} n'existe pas ou n'est pas accessible.`);
-      return next(error);
+    console.error(`Le fichier à l'emplacement ${originalPath} n'existe pas ou n'est pas accessible.`);
+    return next(error);
   }
 
   try {
-      console.time('Reading File');
-      const buffer = await fsPromises.readFile(originalPath);
-      console.timeEnd('Reading File');
+    console.time('Reading File');
+    const buffer = await fsPromises.readFile(originalPath);
+    console.timeEnd('Reading File');
 
-      console.time('Resizing Image');
-      const resizedImageBuffer = await sharp(buffer)
-          .resize(463, 595)
-          .jpeg({ quality: 80 })
-          .toBuffer();
-      console.timeEnd('Resizing Image');
+    console.time('Resizing Image');
+    const resizedImageBuffer = await sharp(buffer)
+        .resize(463, 595)
+        .jpeg({ quality: 80 })
+        .toBuffer();
+    console.timeEnd('Resizing Image');
 
-      console.time('Writing Resized Image');
-      await fsPromises.writeFile(originalPath, resizedImageBuffer);
-      console.timeEnd('Writing Resized Image');
+    console.time('Writing Resized Image');
+    await fsPromises.writeFile(originalPath, resizedImageBuffer);
+    console.timeEnd('Writing Resized Image');
 
-      next();  // Continue to the next middleware or route handler.
+    next();  // Continue to the next middleware or route handler.
   } catch (error) {
-      console.error('Erreur lors du redimensionnement de l\'image:', error);
-      if (error.code) {
-          console.error('Error Code:', error.code);
-      }
-      if (error.path) {
-          console.error('Error Path:', error.path);
-      }
-      next(error);  // Pass the error to the next error handling middleware or to Express.
+    console.error('Erreur lors du redimensionnement de l\'image:', error);
+    if (error.code) {
+        console.error('Error Code:', error.code);
+    }
+    if (error.path) {
+        console.error('Error Path:', error.path);
+    }
+    next(error);  // Pass the error to the next error handling middleware or to Express.
   }
 }
+function uploadMiddleware(req, res, next) {
+  upload.single('image')(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      // Une erreur Multer s'est produite lors du téléchargement.
+      return res.status(500).json({ error: 'Une erreur Multer est survenue lors du téléchargement.' });
+    } else if (err) {
+      // Une erreur inconnue s'est produite lors du téléchargement.
+      return res.status(500).json({ error: 'Une erreur est survenue lors du téléchargement.' });
+    }
+    // Si tout va bien, passez au middleware/routeur suivant.
+    next();
+  });
+}
+
 
 // const resizeImageMiddleware = async (req, res, next) => {
 //   try {
@@ -396,17 +411,44 @@ app.post('/api/books/:id/rating',authenticateToken, async (req, res) => {
     res.status(500).send(`Une erreur est survenue lors de la mise à jour du livre : ${error.message}`);
   }
 });
-app.put('/api/books/:id', authenticateToken, upload.single('image'),resizeImageMiddleware, async (req, res) => {
-  try {
-    let imageUrl;
-    if (req.file) {
-      imageUrl = '/assets/book/' + req.file.filename;
-    }
 
-    const { title, author, year, genre, ratings } = req.body;
+app.put('/api/books/:id', authenticateToken, uploadMiddleware, async (req, res) => {
+  try {
+    let bookToUpdate = await Book.findById(req.params.id);
+    
+    // Si un nouveau fichier est fourni et qu'un ancien fichier existe, supprimez l'ancien fichier.
+    if (req.file && bookToUpdate.imageUrl) {
+      const oldImagePath = path.join(__dirname, '../../public', bookToUpdate.imageUrl);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+    console.log(req.body,"avant");
+    let parsedBook = JSON.parse(req.body.book);
+    let updateObject;
+    if (req.file) {
+      updateObject = {
+        title: parsedBook.title, // Etape 2: Accédez aux propriétés du parsedBook.
+        author: parsedBook.author,
+        year: parsedBook.year,
+        genre: parsedBook.genre,
+        ratings: parsedBook.ratings,
+        imageUrl: '/assets/book/' + req.file.filename
+    };
+    } else {
+      updateObject = {
+        title: parsedBook.title, // Etape 2: Accédez aux propriétés du parsedBook.
+        author: parsedBook.author,
+        year: parsedBook.year,
+        genre: parsedBook.genre,
+        ratings: parsedBook.ratings,
+      };
+    }
+    console.log(req.body,"après");
+    console.log(updateObject,"update");
     const updatedBook = await Book.findByIdAndUpdate(
       req.params.id,
-      { title, imageUrl, author, year, genre, ratings },
+      updateObject,
       { new: true }
     );
 
@@ -416,6 +458,8 @@ app.put('/api/books/:id', authenticateToken, upload.single('image'),resizeImageM
     return res.status(500).json({ error: 'Une erreur est survenue lors de la mise à jour du livre' });
   }
 });
+
+
 app.delete('/api/books/:id', authenticateToken, async (req, res) => {
   try {
     const bookimg = await Book.findById(req.params.id);
