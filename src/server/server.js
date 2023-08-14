@@ -9,19 +9,15 @@ const fsPromises = require('fs').promises;
 const cors = require('cors');
 const sharp = require('sharp');
 const mongoose = require('mongoose')
-// const Jimp = require('jimp');:
-// const gm = require('gm');
-// const morgan = require('morgan');
-// const compression = require('compression');
 const models = require('../models/models');
 require('dotenv').config({ path: '../../.env'});
+const dbUser = process.env.DB_USER;
+const dbPass = process.env.DB_PASS;
 
 const saltRounds = 10;
 const app = express();
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'src/assets/books')));
-// app.use(compression());
-// app.use(morgan('combined'));
 app.use(cors());
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,7 +26,10 @@ app.use((req, res, next) => {
   next();
 });
 
-const url = 'mongodb+srv://kyslegion:12345@cluster0.ytv6p.mongodb.net/projet7?retryWrites=true&w=majority';
+const baseURL = 'mongodb+srv://';
+const domain = '@cluster0.ytv6p.mongodb.net/projet7?retryWrites=true&w=majority';
+const url = `${baseURL}${dbUser}:${dbPass}${domain}`;
+
 
 const connectionParams = {
   useNewUrlParser: true,
@@ -52,16 +51,6 @@ app.use('/assets/book', express.static(uploadPath));
 if (!fs.existsSync(uploadPath)) {
   fs.mkdirSync(uploadPath);
 }
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, uploadPath); 
-//   },
-//   filename: function (req, file, cb) {
-//     cb(null, file.originalname); 
-//   }
-// });
-
-//fonctionn
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, '../../public/assets/book'); 
@@ -72,9 +61,7 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
-// const fsPromises = fs.promises;
 const resizeImageMiddleware = async (req, res, next) => {
-  // Si il n'y a pas de fichier dans la requête, passez simplement au prochain middleware
   if (!req.file || !req.file.path) {
     return next();
   }
@@ -104,7 +91,7 @@ const resizeImageMiddleware = async (req, res, next) => {
     await fsPromises.writeFile(originalPath, resizedImageBuffer);
     console.timeEnd('Writing Resized Image');
 
-    next();  // Continue to the next middleware or route handler.
+    next(); 
   } catch (error) {
     console.error('Erreur lors du redimensionnement de l\'image:', error);
     if (error.code) {
@@ -113,59 +100,20 @@ const resizeImageMiddleware = async (req, res, next) => {
     if (error.path) {
         console.error('Error Path:', error.path);
     }
-    next(error);  // Pass the error to the next error handling middleware or to Express.
+    next(error);  
   }
 }
 function uploadMiddleware(req, res, next) {
   upload.single('image')(req, res, function (err) {
     if (err instanceof multer.MulterError) {
-      // Une erreur Multer s'est produite lors du téléchargement.
       return res.status(500).json({ error: 'Une erreur Multer est survenue lors du téléchargement.' });
     } else if (err) {
-      // Une erreur inconnue s'est produite lors du téléchargement.
       return res.status(500).json({ error: 'Une erreur est survenue lors du téléchargement.' });
     }
-    // Si tout va bien, passez au middleware/routeur suivant.
     next();
   });
 }
 
-
-// const resizeImageMiddleware = async (req, res, next) => {
-//   try {
-//       if (!req.file) {
-//           throw new Error("Aucun fichier téléchargé");
-//       }
-
-//       console.time("Image Resizing Time");
-//       await resizeImageAsync(req.file.path);
-//       console.timeEnd("Image Resizing Time");
-
-//       next(); 
-//   } catch (error) {
-//       console.error("Erreur lors du redimensionnement de l'image:", error);
-//       res.status(500).send("Erreur lors du redimensionnement de l'image");
-//   }
-// };
-
-
-
-
-// async function resizeImageJimp(path) {
-//   const image = await Jimp.read(path);
-//   await image.resize(463, Jimp.AUTO).quality(80).writeAsync(path);
-// }
-// function resizeImageAsync(path) {
-//   return new Promise((resolve, reject) => {
-//     gm(path)
-//       .resize(463, 595)
-//       .quality(80)
-//       .write(path, (err) => {
-//         if (err) reject(err);
-//         else resolve();
-//   });
-//       });
-// }
 const authenticateToken = async (req, res, next) => {
   console.time("Token Authentication Function");
 
