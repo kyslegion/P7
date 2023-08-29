@@ -360,11 +360,10 @@ app.post('/api/books/:id/rating',authenticateToken, async (req, res) => {
   }
 });
 
-app.put('/api/books/:id', authenticateToken, uploadMiddleware, async (req, res) => {
+app.put('/api/books/:id', authenticateToken, uploadMiddleware, resizeImageMiddleware,async (req, res) => {
   try {
     let bookToUpdate = await Book.findById(req.params.id);
     
-    // Si un nouveau fichier est fourni et qu'un ancien fichier existe, supprimez l'ancien fichier.
     if (req.file && bookToUpdate.imageUrl) {
       const oldImagePath = path.join(__dirname, '../../public', bookToUpdate.imageUrl);
       if (fs.existsSync(oldImagePath)) {
@@ -376,7 +375,7 @@ app.put('/api/books/:id', authenticateToken, uploadMiddleware, async (req, res) 
     let updateObject;
     if (req.file) {
       updateObject = {
-        title: parsedBook.title, // Etape 2: Accédez aux propriétés du parsedBook.
+        title: parsedBook.title, 
         author: parsedBook.author,
         year: parsedBook.year,
         genre: parsedBook.genre,
@@ -385,7 +384,7 @@ app.put('/api/books/:id', authenticateToken, uploadMiddleware, async (req, res) 
     };
     } else {
       updateObject = {
-        title: parsedBook.title, // Etape 2: Accédez aux propriétés du parsedBook.
+        title: parsedBook.title, 
         author: parsedBook.author,
         year: parsedBook.year,
         genre: parsedBook.genre,

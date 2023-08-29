@@ -17,14 +17,14 @@ const bookSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema({
   email: {
     type: String,
-    required: true,      // rend le champ email obligatoire
-    unique: true,        // s'assure que l'email est unique
-    trim: true,          // supprime les espaces avant et après la chaîne
-    lowercase: true      // convertit l'email en minuscules
+    required: true,      
+    unique: true,        
+    trim: true,         
+    lowercase: true     
   },
   password: {
     type: String,
-    required: true,      // rend le champ mot de passe obligatoire
+    required: true,      
   },
 }, {collection: 'users'});
 
